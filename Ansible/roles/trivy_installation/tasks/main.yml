@@ -1,0 +1,40 @@
+---
+# tasks/main.yml
+
+- name: Install required packages on Amazon Linux
+  yum:
+    name: "{{ required_packages }}"
+    state: present
+
+- name: Start and enable Docker service
+  systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Download Trivy RPM package
+  get_url:
+    url: "{{ trivy_rpm_url }}"
+    dest: /tmp/trivy.rpm
+    mode: '0755'
+
+- name: Install Trivy RPM package
+  yum:
+    name: /tmp/trivy.rpm
+    state: present
+
+- name: Remove downloaded RPM package
+  file:
+    path: /tmp/trivy.rpm
+    state: absent
+
+# - name: Scan docker image "nginx:latest" with Trivy
+#   command: trivy image nginx:latest
+#   register: trivy_scan_output
+#   changed_when: false
+#   failed_when: false
+
+# - name: Show Trivy scan results
+#   debug:
+#     var: trivy_scan_output.stdout_lines
+

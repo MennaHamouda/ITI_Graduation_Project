@@ -1,0 +1,142 @@
+# ---
+# - name: Install Java
+#   yum:
+#     name: "{{ java_package }}"
+#     state: present
+
+# - name: Import Jenkins GPG key
+#   rpm_key:
+#     key: "{{ jenkins_repo_gpg_key }}"
+#     state: present
+
+# - name: Add Jenkins repository
+#   yum_repository:
+#     name: jenkins
+#     description: Jenkins repo
+#     baseurl: "{{ jenkins_repo_url }}"
+#     gpgcheck: yes
+#     gpgkey: "{{ jenkins_repo_gpg_key }}"
+#     enabled: yes
+
+# - name: Install Jenkins
+#   yum:
+#     name: "jenkins{{ '-' + jenkins_version if jenkins_version else '' }}"
+#     state: present
+
+# - name: Configure Jenkins port
+#   lineinfile:
+#     path: /etc/sysconfig/jenkins
+#     regexp: '^JENKINS_PORT='
+#     line: "JENKINS_PORT={{ jenkins_port }}"
+#     state: present
+#   notify: restart jenkins
+
+# - name: Start and enable Jenkins service
+#   service:
+#     name: jenkins
+#     state: "{{ jenkins_service_state }}"
+#     enabled: "{{ jenkins_service_enabled }}"
+
+# - name: Wait for Jenkins to initialize
+#   wait_for:
+#     port: "{{ jenkins_port }}"
+#     delay: 10
+#     timeout: 300
+
+# - name: Display initial admin password
+#   debug:
+#     msg: "Initial admin password: {{ lookup('file', '/var/lib/jenkins/secrets/initialAdminPassword') }}"
+
+# - name: Jenkins service restart handler
+#   meta: flush_handlers
+
+---
+- name: تحديث النظام الأساسي
+  yum:
+    name: '*'
+    state: latest
+    exclude: kernel*
+    update_cache: yes
+
+- name: تثبيت متطلبات النظام
+  yum:
+    name:
+      - "{{ java_package }}"
+      - wget
+      - curl
+      - git
+    state: present
+
+- name: تنزيل مفتاح GPG لـ Jenkins
+  get_url:
+    url: "{{ jenkins_repo_gpg_key }}"
+    dest: /etc/pki/rpm-gpg/RPM-GPG-KEY-jenkins
+    mode: '0644'
+    validate_certs: yes
+
+- name: استيراد مفتاح GPG
+  rpm_key:
+    key: /etc/pki/rpm-gpg/RPM-GPG-KEY-jenkins
+    state: present
+
+- name: إضافة مستودع Jenkins
+  yum_repository:
+    name: jenkins
+    description: Jenkins Stable Repository
+    baseurl: "{{ jenkins_repo_url }}"
+    gpgcheck: yes
+    gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-jenkins
+    enabled: yes
+
+- name: تثبيت Jenkins
+  yum:
+    name: "jenkins-{{ jenkins_version }}"
+    state: present
+    disable_gpg_check: no
+
+- name: ضبط إعدادات Jenkins
+  template:
+    src: jenkins_config.j2
+    dest: /etc/sysconfig/jenkins
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart jenkins
+
+- name: ضبط المنطقة الزمنية
+  timezone:
+    name: "{{ system_timezone }}"
+
+- name: ضبط اللغة المحلية
+  locale_gen:
+    name: "{{ system_locale }}"
+    state: present
+
+- name: تشغيل وتفعيل خدمة Jenkins
+  service:
+    name: jenkins
+    state: started
+    enabled: yes
+
+- name: الانتظار حتى بدء Jenkins
+  wait_for:
+    port: "{{ jenkins_port }}"
+    delay: 20
+    timeout: 300
+    msg: "لم يتمكن Jenkins من البدء خلال الوقت المحدد"
+
+- name: جمع معلومات تثبيت Jenkins
+  block:
+    - name: الحصول على كلمة المرور الأولية
+      command: cat /var/lib/jenkins/secrets/initialAdminPassword
+      register: jenkins_password
+      changed_when: false
+
+    - name: عرض معلومات الوصول
+      debug:
+        msg: |
+          تم تثبيت Jenkins بنجاح!
+          عنوان الوصول: http://{{ ansible_host }}:{{ jenkins_port }}
+          كلمة المرور الأولية: {{ jenkins_password.stdout }}
+          يرجى تغيير كلمة المرور بعد الدخول الأولى
+  when: jenkins_service_state == 'started'
