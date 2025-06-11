@@ -1,14 +1,19 @@
+
+# ---
 # - name: Cloud_Watch_Agent_Logs_Play
 #   hosts: all
 #   gather_facts: false
 #   roles:
 #     - Cloud_Watch_Agent_Installation
 
-- name: Jenkins_Installation
-  hosts: jenkins_server
-  become: true
-  roles:
-    - Jenkins_Server_Installation
+
+
+# -  name: Install Jenkins on EC2
+#    hosts: jenkins_server
+#    become: true 
+#    roles:
+#    - Jenkins_Server_Installation
+
 
 
 # - name: Docker_installation_Play
@@ -16,7 +21,7 @@
 #   become: true
 #   gather_facts: false
 #   roles:
-#     - Docker_installation
+#  - Docker_installation
 
 # - name: Argocd_Installation_Play
 #   hosts: localhost
@@ -27,9 +32,8 @@
 #     - name: Argocd_Installation
 #       command: bash Argocd_Installation.sh
 
-# - name: Install Trivy via Ansible Role
-#   hosts: jenkins_server
-#   become: yes
-#   roles:
-#     - trivy_installation
-
+- name: Install Trivy via Ansible Role
+  hosts: jenkins_server
+  become: true
+  roles:
+    - trivy_installation

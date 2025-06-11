@@ -1,11 +1,1 @@
----
-# vars/main.yml
 
-trivy_version: "0.43.0"
-trivy_rpm_url: "https://github.com/aquasecurity/trivy/releases/download/v{{ trivy_version }}/trivy_{{ trivy_version }}_Linux-64bit.rpm"
-
-required_packages:
-  - wget
-  - gnupg2
-  - curl
-  - docker
